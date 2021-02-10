@@ -1,0 +1,538 @@
+[r,g,b] coloring. White is [255,255,255]
+
+///////COLOR SELECTION CODE EXAMPLE
+Coding up a Color Selection
+Let’s code up a simple color selection in Python.
+
+No need to download or install anything, you can just follow along in the browser for now.
+
+We'll be working with the same image you saw previously.
+
+Check out the code below. First, I import pyplot and image from matplotlib. I also import numpy for operating on the image.
+
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import numpy as np
+
+I then read in an image and print out some stats. I’ll grab the x and y sizes and make a copy of the image to work with. 
+NOTE: Always make a copy of arrays or other variables in Python. If instead, you say "a = b" then all changes you make to "a" will be reflected in "b" as well!
+
+
+# Read in the image and print out some stats
+image = mpimg.imread('test.jpg')
+print('This image is: ',type(image), 
+         'with dimensions:', image.shape)
+
+# Grab the x and y size and make a copy of the image
+ysize = image.shape[0]
+xsize = image.shape[1]
+# Note: always make a copy rather than simply using "="
+color_select = np.copy(image)
+
+Next I define a color threshold in the variables red_threshold, green_threshold, and blue_threshold and populate rgb_threshold with these values. 
+This vector contains the minimum values for red, green, and blue (R,G,B) that I will allow in my selection.
+
+
+# Define our color selection criteria
+# Note: if you run this code, you'll find these are not sensible values!!
+# But you'll get a chance to play with them soon in a quiz
+red_threshold = 0
+green_threshold = 0
+blue_threshold = 0
+rgb_threshold = [red_threshold, green_threshold, blue_threshold]
+
+Next, I'll select any pixels below the threshold and set them to zero.
+
+After that, all pixels that meet my color criterion (those above the threshold) will be retained, and those that do not (below the threshold) will be blacked out.
+
+thresholds = (image[:,:,0] < rgb_threshold[0]) \
+            | (image[:,:,1] < rgb_threshold[1]) \
+            | (image[:,:,2] < rgb_threshold[2])
+color_select[thresholds] = [0,0,0]
+
+# Display the image
+
+
+plt.imshow(color_select)
+plt.show()
+
+
+The result, color_select, is an image in which pixels that were above the threshold have been retained, and pixels below the threshold have been blacked out.
+
+In the code snippet above, red_threshold, green_threshold and blue_threshold are all set to 0, which implies all pixels will be included in the selection.
+
+In the next quiz, you will modify the values of red_threshold, green_threshold and blue_threshold until you retain as much of the lane lines as possible while dropping everything else. 
+Your output image should look like the one below.
+
+/////////
+
+In the next quiz, I want you to modify the values of the variables red_threshold, green_threshold, and blue_threshold until you are able to retain as much of the lane lines as possible, while getting rid of most of the other stuff. When you run the code in the quiz, your image will be output with an example image next to it. 
+Tweak these variables such that your input image (on the left below) looks like the example image on the right.
+
+//my code:: 
+
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import numpy as np
+
+# Read in the image
+image = mpimg.imread('test.jpg')
+
+# Grab the x and y size and make a copy of the image
+ysize = image.shape[0]
+xsize = image.shape[1]
+color_select = np.copy(image)
+
+# Define color selection criteria
+###### MODIFY THESE VARIABLES TO MAKE YOUR COLOR SELECTION
+red_threshold = 0
+green_threshold = 0
+blue_threshold = 0
+######
+
+rgb_threshold = [red_threshold, green_threshold, blue_threshold]
+
+# Do a boolean or with the "|" character to identify
+# pixels below the thresholds
+thresholds = (image[:,:,0] < rgb_threshold[0]) \
+            | (image[:,:,1] < rgb_threshold[1]) \
+            | (image[:,:,2] < rgb_threshold[2])
+color_select[thresholds] = [0,0,0]
+
+# Display the image                 
+plt.imshow(color_select)
+
+# Uncomment the following code if you are running the code locally and wish to save the image
+# mpimg.imsave("test-after.png", color_select)
+
+/////
+
+Here's how I did it… I started by just trying some guesses.
+
+Eventually, I found that with red_threshold = green_threshold = blue_threshold = 200, I get a pretty good result, where I can clearly see the lane lines, but most everything else is blacked out.
+
+At this point, however, it would still be tricky to extract the exact lines automatically, because we still have many other pixels detected around the periphery.
+
+
+
+//////
+Coding up a Region of Interest Mask
+Awesome! Now you've seen that with a simple color selection we have managed to eliminate almost everything in the image except the lane lines.
+
+At this point, however, it would still be tricky to extract the exact lines automatically, because we still have some other objects detected around the periphery that aren't lane lines.
+
+In this case, I'll assume that the front facing camera that took the image is mounted in a fixed position on the car, such that the lane lines will always appear in the same general region of the image. Next, I'll take advantage of this by adding a criterion to only consider pixels for color selection in the region where we expect to find the lane lines.
+
+Check out the code below. 
+The variables left_bottom, right_bottom, and apex represent the vertices of a triangular region that I would like to retain for my color selection, while masking everything else out. 
+Here I'm using a triangular mask to illustrate the simplest case, but later you'll use a quadrilateral, and in principle, you could use any polygon.
+
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import numpy as np
+
+# Read in the image and print some stats
+image = mpimg.imread('test.jpg')
+print('This image is: ', type(image), 
+         'with dimensions:', image.shape)
+
+# Pull out the x and y sizes and make a copy of the image
+ysize = image.shape[0]
+xsize = image.shape[1]
+region_select = np.copy(image)
+
+# Define a triangle region of interest 
+# Keep in mind the origin (x=0, y=0) is in the upper left in image processing
+# Note: if you run this code, you'll find these are not sensible values!!
+# But you'll get a chance to play with them soon in a quiz 
+left_bottom = [0, 539]
+right_bottom = [900, 300]
+apex = [400, 0]
+
+# Fit lines (y=Ax+B) to identify the  3 sided region of interest
+# np.polyfit() returns the coefficients [A, B] of the fit
+fit_left = np.polyfit((left_bottom[0], apex[0]), (left_bottom[1], apex[1]), 1)
+fit_right = np.polyfit((right_bottom[0], apex[0]), (right_bottom[1], apex[1]), 1)
+fit_bottom = np.polyfit((left_bottom[0], right_bottom[0]), (left_bottom[1], right_bottom[1]), 1)
+
+# Find the region inside the lines
+XX, YY = np.meshgrid(np.arange(0, xsize), np.arange(0, ysize))
+region_thresholds = (YY > (XX*fit_left[0] + fit_left[1])) & \
+                    (YY > (XX*fit_right[0] + fit_right[1])) & \
+                    (YY < (XX*fit_bottom[0] + fit_bottom[1]))
+
+# Color pixels red which are inside the region of interest
+region_select[region_thresholds] = [255, 0, 0]
+
+# Display the image
+plt.imshow(region_select)
+
+# uncomment if plot does not display
+# plt.show()
+
+
+
+Combining Color and Region Selections
+Now you've seen how to mask out a region of interest in an image. 
+Next, let's combine the mask and color selection to pull only the lane lines out of the image.
+
+Check out the code below. 
+Here we’re doing both the color and region selection steps, requiring that a pixel meet both the mask and color selection requirements to be retained.
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import numpy as np
+
+# Read in the image
+image = mpimg.imread('test.jpg')
+
+# Grab the x and y sizes and make two copies of the image
+# With one copy we'll extract only the pixels that meet our selection,
+# then we'll paint those pixels red in the original image to see our selection 
+# overlaid on the original.
+ysize = image.shape[0]
+xsize = image.shape[1]
+color_select= np.copy(image)
+line_image = np.copy(image)
+
+# Define our color criteria
+red_threshold = 0
+green_threshold = 0
+blue_threshold = 0
+rgb_threshold = [red_threshold, green_threshold, blue_threshold]
+
+# Define a triangle region of interest (Note: if you run this code, 
+# Keep in mind the origin (x=0, y=0) is in the upper left in image processing
+# you'll find these are not sensible values!!
+# But you'll get a chance to play with them soon in a quiz ;)
+left_bottom = [0, 539]
+right_bottom = [900, 300]
+apex = [400, 0]
+
+fit_left = np.polyfit((left_bottom[0], apex[0]), (left_bottom[1], apex[1]), 1)
+fit_right = np.polyfit((right_bottom[0], apex[0]), (right_bottom[1], apex[1]), 1)
+fit_bottom = np.polyfit((left_bottom[0], right_bottom[0]), (left_bottom[1], right_bottom[1]), 1)
+
+# Mask pixels below the threshold
+color_thresholds = (image[:,:,0] < rgb_threshold[0]) | \
+                    (image[:,:,1] < rgb_threshold[1]) | \
+                    (image[:,:,2] < rgb_threshold[2])
+
+# Find the region inside the lines
+XX, YY = np.meshgrid(np.arange(0, xsize), np.arange(0, ysize))
+region_thresholds = (YY > (XX*fit_left[0] + fit_left[1])) & \
+                    (YY > (XX*fit_right[0] + fit_right[1])) & \
+                    (YY < (XX*fit_bottom[0] + fit_bottom[1]))
+# Mask color selection
+color_select[color_thresholds] = [0,0,0]
+# Find where image is both colored right and in the region
+line_image[~color_thresholds & region_thresholds] = [255,0,0]
+
+# Display our two output images
+plt.imshow(color_select)
+plt.imshow(line_image)
+
+# uncomment if plot does not display
+# plt.show()
+
+
+
+//////CODING QUIZ
+
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import numpy as np
+
+# Read in the image
+image = mpimg.imread('test.jpg')
+
+# Grab the x and y size and make a copy of the image
+ysize = image.shape[0]
+xsize = image.shape[1]
+color_select = np.copy(image)
+line_image = np.copy(image)
+
+# Define color selection criteria
+# MODIFY THESE VARIABLES TO MAKE YOUR COLOR SELECTION
+red_threshold = 200
+green_threshold = 200
+blue_threshold = 200
+
+rgb_threshold = [red_threshold, green_threshold, blue_threshold]
+
+# Define the vertices of a triangular mask.
+# Keep in mind the origin (x=0, y=0) is in the upper left
+# MODIFY THESE VALUES TO ISOLATE THE REGION 
+# WHERE THE LANE LINES ARE IN THE IMAGE
+left_bottom = [0, 539]
+right_bottom = [900, 300]
+apex = [400, 0]
+
+# Perform a linear fit (y=Ax+B) to each of the three sides of the triangle
+# np.polyfit returns the coefficients [A, B] of the fit
+fit_left = np.polyfit((left_bottom[0], apex[0]), (left_bottom[1], apex[1]), 1)
+fit_right = np.polyfit((right_bottom[0], apex[0]), (right_bottom[1], apex[1]), 1)
+fit_bottom = np.polyfit((left_bottom[0], right_bottom[0]), (left_bottom[1], right_bottom[1]), 1)
+
+# Mask pixels below the threshold
+color_thresholds = (image[:,:,0] < rgb_threshold[0]) | \
+                    (image[:,:,1] < rgb_threshold[1]) | \
+                    (image[:,:,2] < rgb_threshold[2])
+
+# Find the region inside the lines
+XX, YY = np.meshgrid(np.arange(0, xsize), np.arange(0, ysize))
+region_thresholds = (YY > (XX*fit_left[0] + fit_left[1])) & \
+                    (YY > (XX*fit_right[0] + fit_right[1])) & \
+                    (YY < (XX*fit_bottom[0] + fit_bottom[1]))
+                    
+# Mask color and region selection
+color_select[color_thresholds | ~region_thresholds] = [0, 0, 0]
+# Color pixels red where both color and region selections met
+line_image[~color_thresholds & region_thresholds] = [255, 0, 0]
+
+# Display the image and show region and color selections
+plt.imshow(image)
+x = [left_bottom[0], right_bottom[0], apex[0], left_bottom[0]]
+y = [left_bottom[1], right_bottom[1], apex[1], left_bottom[1]]
+plt.plot(x, y, 'b--', lw=4)
+plt.imshow(color_select)
+plt.imshow(line_image)
+
+///////CANNY EDGE DETECTION
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+image = mpimg.imread('exit-ramp.jpg')
+plt.imshow(image)
+
+Here we have an image of the road, and it's fairly obvious by eye where the lane lines are, but what about using computer vision?
+
+Let's go ahead and convert to grayscale.
+
+import cv2  #bringing in OpenCV libraries
+gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY) #grayscale conversion
+plt.imshow(gray, cmap='gray')
+
+Let’s try our Canny edge detector on this image. This is where OpenCV gets useful. 
+First, we'll have a look at the parameters for the OpenCV Canny function. You will call it like this:
+
+edges = cv2.Canny(gray, low_threshold, high_threshold)
+In this case, you are applying Canny to the image gray and your output will be another image called edges. low_threshold and high_threshold are your thresholds for edge detection.
+
+The algorithm will first detect strong edge (strong gradient) pixels above the high_threshold, and reject pixels below the low_threshold. Next, pixels with values between the low_threshold and high_threshold will be included as long as they are connected to strong edges. The output edges is a binary image with white pixels tracing out the detected edges and black everywhere else. See the OpenCV Canny Docs for more details.
+
+What would make sense as a reasonable range for these parameters? In our case, converting to grayscale has left us with an 8-bit image, so each pixel can take 2^8 = 256 possible values. Hence, the pixel values range from 0 to 255.
+
+This range implies that derivatives (essentially, the value differences from pixel to pixel) will be on the scale of tens or hundreds. So, a reasonable range for your threshold parameters would also be in the tens to hundreds.
+
+As far as a ratio of low_threshold to high_threshold, John Canny himself recommended a low to high ratio of 1:2 or 1:3.
+
+We'll also include Gaussian smoothing, before running Canny, which is essentially a way of suppressing noise and spurious gradients by averaging (check out the OpenCV docs for GaussianBlur). cv2.Canny() actually applies Gaussian smoothing internally, but we include it here because you can get a different result by applying further smoothing (and it's not a changeable parameter within cv2.Canny()!).
+
+You can choose the kernel_size for Gaussian smoothing to be any odd number. A larger kernel_size implies averaging, or smoothing, over a larger area. The example in the previous lesson was kernel_size = 3.
+
+Note: If this is all sounding complicated and new to you, don't worry! We're moving pretty fast through the material here, because for now we just want you to be able to use these tools. If you would like to dive into the math underpinning these functions, please check out the free Udacity course, Intro to Computer Vision, where the third lesson covers Gaussian filters and the sixth and seventh lessons cover edge detection.
+
+#doing all the relevant imports
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import numpy as np
+import cv2
+
+# Read in the image and convert to grayscale
+image = mpimg.imread('exit-ramp.jpg')
+gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+
+# Define a kernel size for Gaussian smoothing / blurring
+# Note: this step is optional as cv2.Canny() applies a 5x5 Gaussian internally
+kernel_size = 3
+blur_gray = cv2.GaussianBlur(gray,(kernel_size, kernel_size), 0)
+
+# Define parameters for Canny and run it
+# NOTE: if you try running this code you might want to change these!
+low_threshold = 1
+high_threshold = 10
+edges = cv2.Canny(blur_gray, low_threshold, high_threshold)
+
+# Display the image
+plt.imshow(edges, cmap='Greys_r')
+
+
+Here I've called the OpenCV function Canny on a Gaussian-smoothed grayscaled image called blur_gray and detected edges with thresholds on the gradient of high_threshold, and low_threshold.
+
+In the next quiz you'll get to try this on your own and mess around with the parameters for the Gaussian smoothing and Canny Edge Detection to optimize for detecting the lane lines and not a lot of other stuff.
+
+///canny quiz
+# Do all the relevant imports
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import numpy as np
+import cv2
+
+# Read in the image and convert to grayscale
+# Note: in the previous example we were reading a .jpg 
+# Here we read a .png and convert to 0,255 bytescale
+image = mpimg.imread('exit-ramp.jpg')
+gray = cv2.cvtColor(image,cv2.COLOR_RGB2GRAY)
+
+# Define a kernel size for Gaussian smoothing / blurring
+kernel_size = 3 # Must be an odd number (3, 5, 7...)
+blur_gray = cv2.GaussianBlur(gray,(kernel_size, kernel_size),0)
+
+# Define our parameters for Canny and run it
+low_threshold = 1
+high_threshold = 10
+edges = cv2.Canny(blur_gray, low_threshold, high_threshold)
+
+# Display the image
+plt.imshow(edges, cmap='Greys_r')
+
+//////
+Here’s how I did it…
+
+I chose a kernelSize of 5 for Gaussian smoothing, a lowThreshold of 50 and a highThreshold of 150. 
+These selections nicely extract the lane lines, while minimizing the edges detected in the rest of the image, producing the result shown below.
+
+
+
+HOUGH TRANSFORMATION 
+
+Implementing a Hough Transform on Edge Detected Image
+Now you know how the Hough Transform works, but to accomplish the task of finding lane lines, we need to specify some parameters to say what kind of lines we want to detect (i.e., long lines, short lines, bendy lines, dashed lines, etc.).
+
+To do this, we'll be using an OpenCV function called HoughLinesP that takes several parameters. Let's code it up and find the lane lines in the image we detected edges in with the Canny function (for a look at coding up a Hough Transform from scratch, check this out.) .
+
+Here's the image we're working with:
+
+
+
+Let's look at the input parameters for the OpenCV function HoughLinesP that we will use to find lines in the image. You will call it like this:
+
+lines = cv2.HoughLinesP(masked_edges, rho, theta, threshold, np.array([]),
+                                             min_line_length, max_line_gap)
+In this case, we are operating on the image masked_edges (the output from Canny) and the output from HoughLinesP will be lines, which will simply be an array containing the endpoints (x1, y1, x2, y2) of all line segments detected by the transform operation. The other parameters define just what kind of line segments we're looking for.
+
+First off, rho and theta are the distance and angular resolution of our grid in Hough space. Remember that, in Hough space, we have a grid laid out along the (Θ, ρ) axis. You need to specify rho in units of pixels and theta in units of radians.
+
+So, what are reasonable values? Well, rho takes a minimum value of 1, and a reasonable starting place for theta is 1 degree (pi/180 in radians). Scale these values up to be more flexible in your definition of what constitutes a line.
+
+The threshold parameter specifies the minimum number of votes (intersections in a given grid cell) a candidate line needs to have to make it into the output. The empty np.array([]) is just a placeholder, no need to change it. min_line_length is the minimum length of a line (in pixels) that you will accept in the output, and max_line_gap is the maximum distance (again, in pixels) between segments that you will allow to be connected into a single line. You can then iterate through your output lines and draw them onto the image to see what you got!
+
+So, here's what its going to look like:
+
+# Do relevant imports
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import numpy as np
+import cv2
+
+# Read in and grayscale the image
+image = mpimg.imread('exit-ramp.jpg')
+gray = cv2.cvtColor(image,cv2.COLOR_RGB2GRAY)
+
+# Define a kernel size and apply Gaussian smoothing
+kernel_size = 5
+blur_gray = cv2.GaussianBlur(gray,(kernel_size, kernel_size),0)
+
+# Define our parameters for Canny and apply
+low_threshold = 50
+high_threshold = 150
+masked_edges = cv2.Canny(blur_gray, low_threshold, high_threshold)
+
+# Define the Hough transform parameters
+# Make a blank the same size as our image to draw on
+rho = 1
+theta = np.pi/180
+threshold = 1
+min_line_length = 10
+max_line_gap = 1
+line_image = np.copy(image)*0 #creating a blank to draw lines on
+
+# Run Hough on edge detected image
+lines = cv2.HoughLinesP(masked_edges, rho, theta, threshold, np.array([]),
+                            min_line_length, max_line_gap)
+
+# Iterate over the output "lines" and draw lines on the blank
+for line in lines:
+    for x1,y1,x2,y2 in line:
+        cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),10)
+
+# Create a "color" binary image to combine with line image
+color_edges = np.dstack((masked_edges, masked_edges, masked_edges)) 
+
+# Draw the lines on the edge image
+combo = cv2.addWeighted(color_edges, 0.8, line_image, 1, 0) 
+plt.imshow(combo)
+
+
+Hough image 2 
+
+As you can see I've detected lots of line segments! Your job, in the next exercise, is to figure out which parameters do the best job of optimizing the detection of the lane lines. Then, you'll want to apply a region of interest mask to filter out detected line segments in other areas of the image. Earlier in this lesson you used a triangular region mask, but this time you'll get a chance to use a quadrilateral region mask using the cv2.fillPoly() function (keep in mind though, you could use this same method to mask an arbitrarily complex polygon region). 
+When you're finished you'll be ready to apply the skills you've learned to do the project at the end of this lesson.
+
+
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import numpy as np
+import cv2
+
+
+# Read in and grayscale the image
+image = mpimg.imread('exit-ramp.jpg')
+gray = cv2.cvtColor(image,cv2.COLOR_RGB2GRAY)
+
+# Define a kernel size and apply Gaussian smoothing
+kernel_size = 5
+blur_gray = cv2.GaussianBlur(gray,(kernel_size, kernel_size),0)
+
+# Define our parameters for Canny and apply
+low_threshold = 50
+high_threshold = 150
+edges = cv2.Canny(blur_gray, low_threshold, high_threshold)
+
+# Next we'll create a masked edges image using cv2.fillPoly()
+mask = np.zeros_like(edges)   
+ignore_mask_color = 255   
+
+# This time we are defining a four sided polygon to mask
+imshape = image.shape
+vertices = np.array([[(0,imshape[0]),(0, 0), (imshape[1], 0), (imshape[1],imshape[0])]], dtype=np.int32)
+cv2.fillPoly(mask, vertices, ignore_mask_color)
+masked_edges = cv2.bitwise_and(edges, mask)
+
+# Define the Hough transform parameters
+# Make a blank the same size as our image to draw on
+rho = 1 # distance resolution in pixels of the Hough grid
+theta = np.pi/180 # angular resolution in radians of the Hough grid
+threshold = 1     # minimum number of votes (intersections in Hough grid cell)
+min_line_length = 5 #minimum number of pixels making up a line
+max_line_gap = 1    # maximum gap in pixels between connectable line segments
+line_image = np.copy(image)*0 # creating a blank to draw lines on
+
+# Run Hough on edge detected image
+# Output "lines" is an array containing endpoints of detected line segments
+lines = cv2.HoughLinesP(masked_edges, rho, theta, threshold, np.array([]),
+                            min_line_length, max_line_gap)
+
+# Iterate over the output "lines" and draw lines on a blank image
+for line in lines:
+    for x1,y1,x2,y2 in line:
+        cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),10)
+
+# Create a "color" binary image to combine with line image
+color_edges = np.dstack((edges, edges, edges)) 
+
+# Draw the lines on the edge image
+lines_edges = cv2.addWeighted(color_edges, 0.8, line_image, 1, 0) 
+plt.imshow(lines_edges)
+
+
+Here's how I did it: I went with a low_threshold of 50 and high_threshold of 150 for Canny edge detection.
+
+For region selection, I defined vertices = np.array([[(0,imshape[0]),(450, 290), (490, 290), (imshape[1],imshape[0])]], dtype=np.int32)
+
+I chose parameters for my Hough space grid to be a rho of 2 pixels and theta of 1 degree (pi/180 radians). I chose a threshold of 15, meaning at least 15 points in image space need to be associated with each line segment. I imposed a min_line_length of 40 pixels, and max_line_gap of 20 pixels.
+
+With these parameters, I'm picking up the lanes lines and nothing else, so looks like a decent solution!
+
+
+
+
