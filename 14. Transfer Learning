@@ -1,0 +1,215 @@
+SECTION 3
+GPU vs CPU Performance Increase Over Time
+The chart below gives a general idea of how, over time, GPU performance has increased faster than CPU performance. The data is based on a comparison of NVIDIA GPUs and Intel CPUs.
+
+SECTION 4
+
+The Four Main Cases When Using Transfer Learning
+Transfer learning involves taking a pre-trained neural network and adapting the neural network to a new, different data set.
+
+Depending on both:
+
+the size of the new data set, and
+the similarity of the new data set to the original data set
+the approach for using transfer learning will be different. There are four main cases:
+
+new data set is small, new data is similar to original training data
+new data set is small, new data is different from original training data
+new data set is large, new data is similar to original training data
+new data set is large, new data is different from original training data
+
+Four Cases When Using Transfer Learning
+
+A large data set might have one million images. A small data could have two-thousand images. The dividing line between a large data set and small data set is somewhat subjective. Overfitting is a concern when using transfer learning with a small data set.
+
+Images of dogs and images of wolves would be considered similar; the images would share common characteristics. A data set of flower images would be different from a data set of dog images.
+
+Each of the four transfer learning cases has its own approach. In the following sections, we will look at each case one by one.
+
+Demonstration Network
+To explain how each situation works, we will start with a generic pre-trained convolutional neural network and explain how to adjust the network for each case. Our example network contains three convolutional layers and three fully connected layers:
+
+
+General Overview of a Neural Network
+
+Here is an generalized overview of what the convolutional neural network does:
+
+the first layer will detect edges in the image
+the second layer will detect shapes
+the third convolutional layer detects higher level features
+Each transfer learning case will use the pre-trained convolutional neural network in a different way.
+
+Case 1: Small Data Set, Similar Data
+
+Case 1: Small Data Set with Similar Data
+
+If the new data set is small and similar to the original training data:
+
+slice off the end of the neural network
+add a new fully connected layer that matches the number of classes in the new data set
+randomize the weights of the new fully connected layer; freeze all the weights from the pre-trained network
+train the network to update the weights of the new fully connected layer
+To avoid overfitting on the small data set, the weights of the original network will be held constant rather than re-training the weights.
+
+Since the data sets are similar, images from each data set will have similar higher level features. Therefore most or all of the pre-trained neural network layers already contain relevant information about the new data set and should be kept.
+
+Here's how to visualize this approach:
+
+
+Neural Network with Small Data Set, Similar Data
+
+Case 2: Small Data Set, Different Data
+
+Case 2: Small Data Set, Different Data
+
+If the new data set is small and different from the original training data:
+
+slice off most of the pre-trained layers near the beginning of the network
+add to the remaining pre-trained layers a new fully connected layer that matches the number of classes in the new data set
+randomize the weights of the new fully connected layer; freeze all the weights from the pre-trained network
+train the network to update the weights of the new fully connected layer
+Because the data set is small, overfitting is still a concern. To combat overfitting, the weights of the original neural network will be held constant, like in the first case.
+
+But the original training set and the new data set do not share higher level features. In this case, the new network will only use the layers containing lower level features.
+
+Here is how to visualize this approach:
+
+
+Neural Network with Small Data Set, Different Data
+
+Case 3: Large Data Set, Similar Data
+
+Case 3: Large Data Set, Similar Data
+
+If the new data set is large and similar to the original training data:
+
+remove the last fully connected layer and replace with a layer matching the number of classes in the new data set
+randomly initialize the weights in the new fully connected layer
+initialize the rest of the weights using the pre-trained weights
+re-train the entire neural network
+Overfitting is not as much of a concern when training on a large data set; therefore, you can re-train all of the weights.
+
+Because the original training set and the new data set share higher level features, the entire neural network is used as well.
+
+Here is how to visualize this approach:
+
+
+Neural Network with Large Data Set, Similar Data
+
+Case 4: Large Data Set, Different Data
+
+Case 4: Large Data Set, Different Data
+
+If the new data set is large and different from the original training data:
+
+remove the last fully connected layer and replace with a layer matching the number of classes in the new data set
+retrain the network from scratch with randomly initialized weights
+alternatively, you could just use the same strategy as the "large and similar" data case
+Even though the data set is different from the training data, initializing the weights from the pre-trained network might make training faster. So this case is exactly the same as the case with a large, similar data set.
+
+If using the pre-trained network as a starting point does not produce a successful model, another option is to randomly initialize the convolutional neural network weights and train the network from scratch.
+
+Here is how to visualize this approach:
+
+
+Neural Network with Large Data Set, Different Data
+
+
+SECTION 6
+
+ImageNet was its own competition from 2012-2017, but now it's hosted on Kaggle! There are 1,000 different image categories between over 14 million images, so it's a great way to get involved with large datasets.
+
+Pre-training a network with the ImageNet dataset is a very common way to get a strong neural network that can be used for transfer learning. With recent versions of Keras, you can easily import a pre-trained network by using the Keras Applications models. We'll come back to this soon.
+
+https://keras.io/api/applications/
+
+SECTION 9
+
+
+You can find the original VGG paper here.
+https://arxiv.org/pdf/1409.1556.pdf
+
+
+VGG in Keras
+As we mentioned earlier, you can fairly quickly utilize a pre-trained model with Keras Applications. VGG16 is one of the built-in models supported. There are actually two versions of VGG, VGG16 and VGG19 (where the numbers denote the number of layers included in each respective model), and you can utilize either with Keras, but we'll work with VGG16 here.
+
+from keras.applications.vgg16 import VGG16
+
+model = VGG16(weights='imagenet', include_top=False)
+There are two arguments to VGG16 in this example, although there could be more or less (check out the linked documentation to see other possible arguments). The first, weights='imagenet', loads the pre-trained ImageNet weights. This is actually the default argument per the documentation, so if you don't include it, you should still be loading the ImageNet weights. However, you can also specify None here to get random weights if you just want the architecture of VGG16; this is not suggested here since you won't get the benefit of transfer learning.
+
+The argument include_top is for whether you want to include the fully-connected layer at the top of the network; unless you are actually trying to classify ImageNet's 1,000 classes, you likely want to set this to False and add your own additional layer for the output you desire.
+
+Pre-processing for ImageNet weights
+There is another item to consider before jumping into using an ImageNet pre-trained model. These networks are typically pre-trained with a specific type of pre-processing, so you need to make sure to use the same pre-processing steps, or your network's outputs will likely be erratic.
+
+VGG uses 224x224 images as input, so that's another thing to consider.
+
+from keras.preprocessing import image
+from keras.applications.vgg16 import preprocess_input
+import numpy as np
+
+img_path = 'your_image.jpg'
+img = image.load_img(img_path, target_size=(224, 224))
+x = image.img_to_array(img)
+x = np.expand_dims(x, axis=0)
+x = preprocess_input(x)
+
+SECTION 11
+
+You can find the original GoogLeNet/Inception paper here.
+
+https://arxiv.org/pdf/1409.4842.pdf
+
+GoogLeNet/Inception in Keras
+Inception is also one of the models included in Keras Applications. Utilizing this model follows pretty much the same steps as using VGG, although this time you'll use the InceptionV3 architecture.
+
+from keras.applications.inception_v3 import InceptionV3
+
+model = InceptionV3(weights='imagenet', include_top=False)
+Don't forget to perform the necessary pre-processing steps to any inputs you include! While the original Inception model used a 224x224 input like VGG, InceptionV3 actually uses a 299x299 input.
+
+
+
+SECTION 12
+
+Here is the original ResNet paper, for those interested.
+https://arxiv.org/pdf/1512.03385.pdf
+
+
+ResNet in Keras
+As you may have guessed, ResNet is also a model included in Keras Applications, under ResNet50.
+
+from keras.applications.resnet50 import ResNet50
+
+model = ResNet50(weights='imagenet', include_top=False)
+Again, you'll need to do ImageNet-related pre-processing if you want to use the pre-trained weights for it. ResNet50 has a 224x224 input size.
+
+
+
+SECTION 13
+
+Using Keras Applications models without pre-trained weights
+So far, you've seen the effectiveness of models pre-trained on ImageNet weights, but what if we specify weights=None when we load a model? Well, you'll instead be randomly initializing the weights, as if you had built a model on your own and were starting from scratch.
+
+From our chart before, there are few situations where this might even be a potential use case - basically, when you have data that is very different from the original data. However, given the large size of the ImageNet dataset (remember, it's over 14 million images from 1,000 classes!), it's highly unlikely this is really the case - it will almost always make the most sense to start with ImageNet pre-trained weights, and only fine-tune from there
+
+Four Use Cases of Transfer Learning
+Four Use Cases of Transfer Learning
+
+Below, let's check out what happens when we try to use a pre-made model but set the weights to None - this means no training has occurred yet!
+
+SECTION 14
+
+Lab: Transfer Learning
+In the below lab, you'll get a chance to try out a few instances of transfer learning, including both frozen and non-frozen pre-trained weights.
+
+Frozen Weights
+Frozen weights are often used when only fine-tuning the model, as backpropagation and weight updates will not be applied to any frozen layers during training. If you have an ImageNet pre-trained model, most of the network is likely applicable to your situation, so you may only need to cut off the top fully-connected layer, freeze all other layers, and just add one or more layers at the end that are not frozen to perform some fine-tuning.
+
+There is also the option of not freezing the weights, which will start your model on the ImageNet pre-trained weights (if applicable) and then perform further training from there.
+
+An additional benefit of freezing the weights also comes in the form of memory usage and training speed - for the larger networks such as VGG, there is a substantially larger memory usage and slower speed when it needs to perform backpropagation and weight updates across all layers instead of just on a small portion of (likely smaller) layers.
+
+Note: There is a solution notebook that can be found by clicking on the Jupyter logo in the upper left of the workspace if you get stuck.
+
